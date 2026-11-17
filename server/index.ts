@@ -17,6 +17,17 @@ function createUniqueCode(): string {
     return code;
 }
 
+function addOrUpdatePlayer(room: Room, playerId: string, name: string, socketId: string): Player {
+    const existing = room.players.find((p) => p.id === playerId);
+    if (existing) {
+        existing.socketId = socketId;
+        return existing;
+    }
+    const player: Player = { id: playerId, name, socketId, score: 0 };
+    room.players.push(player);
+    return player;
+}
+
 io.on("connection", (socket) => {
     console.log("connected:", socket.id);
 
@@ -26,25 +37,11 @@ io.on("connection", (socket) => {
         const existing = [...rooms.values()].find((r) => r.hostId === data.playerId);
 
         if (existing) {
-            const player = existing.players.find((p) => p.id === data.playerId);
-            //Check if host is in the room / else host joins the room without duplicating room
-            if (player) {
-                player.socketId = socket.id;
-            } else {
-                const host: Player = {
-                    id: data.playerId,
-                    name: data.name,
-                    socketId: socket.id,
-                    score: 0,
-                };
-                existing.players.push(host)
-            }
-            rooms.set(existing.code, existing);
-            socket.join(existing.code)
+            addOrUpdatePlayer(existing, data.playerId, data.name, socket.id);   // which three values from `data` and `socket`?
+            socket.join(existing.code);
             io.to(existing.code).emit("room:state", existing);
             return;
         }
-
 
         const code = createUniqueCode();
 
@@ -80,20 +77,7 @@ io.on("connection", (socket) => {
         }
 
         //If player already joined previously
-        let player: Player | undefined = room.players.find((p) => p.id === data.playerId);
-        if (player)
-            player.socketId = socket.id
-        else {
-            player = {
-                id: data.playerId,
-                name: data.name,
-                socketId: socket.id,
-                score: 0,
-            };
-            room.players.push(player)
-        }
-
-        rooms.set(room.code, room)
+        addOrUpdatePlayer(room, data.playerId, data.name, socket.id);
 
         socket.join(room.code);
 
