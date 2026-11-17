@@ -21,6 +21,31 @@ io.on("connection", (socket) => {
     console.log("connected:", socket.id);
 
     socket.on("createRoom", (data: { playerId: string; name: string }) => {
+
+        //Check if a room with hostId already exists
+        const existing = [...rooms.values()].find((r) => r.hostId === data.playerId);
+
+        if (existing) {
+            const player = existing.players.find((p) => p.id === data.playerId);
+            //Check if host is in the room / else host joins the room without duplicating room
+            if (player) {
+                player.socketId = socket.id;
+            } else {
+                const host: Player = {
+                    id: data.playerId,
+                    name: data.name,
+                    socketId: socket.id,
+                    score: 0,
+                };
+                existing.players.push(host)
+            }
+            rooms.set(existing.code, existing);
+            socket.join(existing.code)
+            io.to(existing.code).emit("room:state", existing);
+            return;
+        }
+
+
         const code = createUniqueCode();
 
         const host: Player = {
