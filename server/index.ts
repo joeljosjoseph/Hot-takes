@@ -21,6 +21,29 @@ io.on("connection", (socket) => {
     console.log("connected:", socket.id);
 
     socket.on("createRoom", (data: { playerId: string; name: string }) => {
+        const existing = [...rooms.values()].find((r) => r.hostId === data.playerId);
+
+        if (existing) {
+            // TODO: this host is coming back. What has to be updated on their Player,
+            //       and what has to happen to their socket?
+            const player = existing.players.find((p) => p.id === data.playerId);
+            if (player) {
+                player.socketId = socket.id;
+            } else {
+                const host: Player = {
+                    id: data.playerId,
+                    name: data.name,
+                    socketId: socket.id,
+                    score: 0,
+                };
+                existing.players.push(host)
+            }
+            rooms.set(existing.code, existing);
+            socket.join(existing.code)
+            io.to(existing.code).emit("room:state", existing);
+            return;
+        }
+
         const code = createUniqueCode();
 
         const host: Player = {
