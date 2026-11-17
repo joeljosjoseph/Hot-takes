@@ -6,9 +6,10 @@ import { socket } from "./socket";
 export default function Home() {
   const [isConnected, setIsConnected] = useState(false);
   const [transport, setTransport] = useState("N/A");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (socket.connected) {
+    if (!socket.connected) {
       onConnect();
     }
 
@@ -26,8 +27,13 @@ export default function Home() {
       setTransport("N/A");
     }
 
+    function onMessage(message: string) {
+      setMessage(message);
+    }
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
+    socket.on("Hello", onMessage);
 
     return () => {
       socket.off("connect", onConnect);
@@ -35,10 +41,39 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    socket.on("room:state", (room) => console.log(room));
+    socket.on("error:join", (room) => console.log("Room not found"));
+
+    return () => {
+      socket.off("room:state");
+    };
+  });
+
   return (
     <div>
       <p>Status: {isConnected ? "connected" : "disconnected"}</p>
       <p>Transport: {transport}</p>
+      <p>Message: {message}</p>
+      <button
+        onClick={() =>
+          socket.emit("createRoom", { playerId: "p1", name: "Sam" })
+        }
+      >
+        Create room
+      </button>
+
+      <button
+        onClick={() =>
+          socket.emit("joinRoom", {
+            code: "XYRK",
+            playerId: "p2",
+            name: "Alex",
+          })
+        }
+      >
+        Join as Alex
+      </button>
     </div>
   );
 }
