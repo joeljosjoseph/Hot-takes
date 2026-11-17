@@ -66,7 +66,7 @@ export default function Home() {
       <button
         onClick={() =>
           socket.emit("joinRoom", {
-            code: "XYRK",
+            code: "BULJ",
             playerId: "p2",
             name: "Alex",
           })

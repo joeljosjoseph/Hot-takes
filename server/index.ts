@@ -48,19 +48,26 @@ io.on("connection", (socket) => {
     socket.on("joinRoom", (data: { code: string; playerId: string; name: string }) => {
         let room = rooms.get(data.code);
 
+        //If room ID doesn't exists
         if (!room) {
             socket.emit("error:join", "Room not found")
             return;
         }
 
-        const player: Player = {
-            id: data.playerId,
-            name: data.name,
-            socketId: socket.id,
-            score: 0,
-        };
+        //If player already joined previously
+        let player: Player | undefined = room.players.find((p) => p.id === data.playerId);
+        if (player)
+            player.socketId = socket.id
+        else {
+            player = {
+                id: data.playerId,
+                name: data.name,
+                socketId: socket.id,
+                score: 0,
+            };
+            room.players.push(player)
+        }
 
-        room = { ...room, players: [...room.players, player] }
         rooms.set(room.code, room)
 
         socket.join(room.code);
