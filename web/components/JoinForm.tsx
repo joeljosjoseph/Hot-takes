@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button, Card, ErrorNote, Screen, inputClass } from "./ui";
 
 type Props = {
   connected: boolean;
@@ -19,46 +20,66 @@ export default function JoinForm({
   const [code, setCode] = useState("");
 
   return (
-    <main className="mx-auto max-w-md p-6 space-y-4">
-      <h1 className="text-3xl font-bold">Hot Takes</h1>
-      <p className="text-sm text-gray-500">
-        {connected ? "Connected" : "Connecting…"}
+    <Screen>
+      <header className="flex items-start justify-between">
+        <h1 className="text-6xl font-extrabold leading-[0.9] tracking-tight">
+          Hot
+          <br />
+          Takes
+        </h1>
+        <span className="mt-2 flex items-center gap-2 text-sm font-semibold">
+          <span
+            className={`size-2.5 rounded-full border border-ink ${connected ? "bg-mint" : "bg-chili"}`}
+          />
+          {connected ? "Connected" : "Connecting…"}
+        </span>
+      </header>
+
+      <p className="text-lg">
+        Answer the prompt, then vote for the funniest answer.
       </p>
 
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Your name"
-        maxLength={16}
-        className="w-full rounded border px-3 py-2"
-      />
+      <label className="block space-y-2">
+        <span className="font-bold">Your name</span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={16}
+          placeholder="Sam"
+          className={inputClass}
+        />
+      </label>
 
-      <button
+      <Button
         onClick={() => onCreate(name)}
         disabled={!connected}
-        className="w-full rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+        className="w-full"
       >
-        Create room
-      </button>
+        Create a room
+      </Button>
 
-      <div className="flex gap-2">
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="ABCD"
-          maxLength={4}
-          className="w-full rounded border px-3 py-2 font-mono uppercase"
-        />
-        <button
-          onClick={() => onJoin(name, code)}
-          disabled={!connected}
-          className="rounded border px-4 py-2 disabled:opacity-50"
-        >
-          Join
-        </button>
-      </div>
+      <Card>
+        <p className="mb-3 font-bold">Have a code?</p>
+        <div className="flex gap-2">
+          <input
+            aria-label="Room code"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            maxLength={4}
+            placeholder="ABCD"
+            className={`${inputClass} font-mono text-xl uppercase tracking-[0.3em]`}
+          />
+          <Button
+            variant="secondary"
+            onClick={() => onJoin(name, code)}
+            disabled={!connected}
+          >
+            Join
+          </Button>
+        </div>
+      </Card>
 
-      {error && <p className="text-red-600">{error}</p>}
-    </main>
+      <ErrorNote message={error} />
+    </Screen>
   );
 }

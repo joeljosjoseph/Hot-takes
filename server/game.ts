@@ -16,6 +16,7 @@ export function startAnswering(room: Room) {
     room.phase = "ANSWERING";
     room.prompt = generatePrompt();
     room.phaseEndsAt = Date.now() + ANSWER_SECONDS * 1000;   // point in time, for clients
+    room.phaseDurationMs = ANSWER_SECONDS * 1000
     room.round += 1;
     answers.set(room.code, []);
     drafts.set(room.code, new Map());
@@ -86,6 +87,7 @@ export function resetToLobby(room: Room) {
     room.round = 0;
     room.prompt = null;
     room.phaseEndsAt = null;
+    room.phaseDurationMs = null;
     for (const p of room.players) p.score = 0;
     answers.delete(room.code);
     drafts.delete(room.code);

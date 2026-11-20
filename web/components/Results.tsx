@@ -1,5 +1,6 @@
 import type { AnswerResult, Room } from "@/lib/types";
 import Scoreboard from "./Scoreboard";
+import { Button, ErrorNote, Pill, Screen } from "./ui";
 
 type Props = {
   room: Room;
@@ -9,42 +10,57 @@ type Props = {
   onNext: () => void;
 };
 
+const STEP_MS = 300;
+
 export default function Results({ room, myId, results, error, onNext }: Props) {
   const isLastRound = room.round >= room.totalRounds;
 
   return (
-    <main className="mx-auto max-w-md p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-center">
-        Round {room.round} results
-      </h1>
+    <Screen>
+      <Pill className="self-start">
+        Round {room.round} of {room.totalRounds}
+      </Pill>
+      <h1 className="text-3xl font-extrabold">Results</h1>
 
-      <ul className="space-y-2">
+      {/* Revealed from last place up to the winner */}
+      <ul className="space-y-3">
         {results.map((r, i) => (
-          <li key={i} className="rounded border px-4 py-3">
-            <p>{r.text}</p>
-            <p className="text-sm text-gray-500">
-              {r.authorName}: {r.votes} vote{r.votes === 1 ? "" : "s"}
+          <li
+            key={i}
+            className={`reveal rounded-2xl border-2 border-ink p-4 shadow-pop ${
+              i === 0 && r.votes > 0 ? "bg-mint" : "bg-white"
+            }`}
+            style={{
+              animationDelay: `${(results.length - 1 - i) * STEP_MS}ms`,
+            }}
+          >
+            <p className="text-lg font-semibold">{r.text}</p>
+            <p className="mt-1 text-sm font-semibold">
+              {r.authorName} got {r.votes} {r.votes === 1 ? "vote" : "votes"}
             </p>
           </li>
         ))}
       </ul>
 
-      <div>
-        <h2 className="font-semibold mb-2">Scoreboard</h2>
-        <Scoreboard players={room.players} myId={myId} />
-      </div>
+      {/* Scores appear after the last answer */}
+      <div
+        className="reveal space-y-6"
+        style={{ animationDelay: `${results.length * STEP_MS}ms` }}
+      >
+        <section className="space-y-3">
+          <h2 className="text-xl font-extrabold">Scoreboard</h2>
+          <Scoreboard players={room.players} myId={myId} />
+        </section>
 
-      {myId === room.hostId ? (
-        <button
-          onClick={onNext}
-          className="w-full rounded bg-black px-4 py-2 text-white"
-        >
-          {isLastRound ? "Final scores" : "Next round"}
-        </button>
-      ) : (
-        <p className="text-center text-gray-500">Waiting for the host…</p>
-      )}
-      {error && <p className="text-red-600 text-center">{error}</p>}
-    </main>
+        {myId === room.hostId ? (
+          <Button onClick={onNext} className="w-full">
+            {isLastRound ? "Show final scores" : "Next round"}
+          </Button>
+        ) : (
+          <p className="text-center font-semibold">Waiting for the host…</p>
+        )}
+        <ErrorNote message={error} />
+      </div>
+    </Screen>
   );
 }

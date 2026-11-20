@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import type { Room } from "@/lib/types";
+import Avatar from "./Avatar";
+import { Button, ErrorNote, Pill, Screen } from "./ui";
 
 type Props = { room: Room; myId: string; error: string; onStart: () => void };
 
 export default function Lobby({ room, myId, error, onStart }: Props) {
   const [copied, setCopied] = useState(false);
+  const isHost = myId === room.hostId;
 
   async function copyCode() {
     await navigator.clipboard.writeText(room.code);
@@ -15,44 +18,73 @@ export default function Lobby({ room, myId, error, onStart }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-md p-6 space-y-6">
-      <div className="text-center space-y-2">
-        <p className="text-sm text-gray-500">Room code</p>
-        <p className="text-5xl font-mono font-bold tracking-widest">
-          {room.code}
-        </p>
-        <button onClick={copyCode} className="rounded border px-3 py-1 text-sm">
-          {copied ? "Copied!" : "Copy code"}
-        </button>
-      </div>
+    <Screen>
+      <section className="space-y-4 text-center">
+        <p className="font-semibold">Share this code with your friends</p>
+        <div
+          className="flex justify-center gap-2"
+          aria-label={`Room code ${room.code}`}
+        >
+          {room.code.split("").map((ch, i) => (
+            <span
+              key={i}
+              className="grid size-16 place-items-center rounded-xl border-2 border-ink bg-white text-4xl font-extrabold shadow-pop"
+            >
+              {ch}
+            </span>
+          ))}
+        </div>
+        <Button
+          variant="secondary"
+          onClick={copyCode}
+          className="min-h-10 px-4 py-1.5 text-base"
+        >
+          {copied ? "Copied" : "Copy code"}
+        </Button>
+      </section>
 
-      <div>
-        <h2 className="font-semibold mb-2">Players ({room.players.length})</h2>
-        <ul className="space-y-1">
+      <section className="space-y-3">
+        <h2 className="text-xl font-extrabold">
+          Players ({room.players.length})
+        </h2>
+        <ul className="space-y-2">
           {room.players.map((p) => (
-            <li key={p.id} className="rounded border px-3 py-2">
-              {p.name}
-              {p.id === room.hostId && " 👑"}
-              {p.id === myId && " (you)"}
+            <li
+              key={p.id}
+              className="flex items-center gap-3 rounded-xl border-2 border-ink bg-white px-3 py-2"
+            >
+              <Avatar id={p.id} name={p.name} />
+              <span className="flex-1 truncate font-semibold">{p.name}</span>
+              {p.id === room.hostId && <Pill>Host</Pill>}
+              {p.id === myId && <Pill className="bg-sun">You</Pill>}
             </li>
           ))}
         </ul>
-      </div>
+      </section>
 
-      {myId === room.hostId ? (
-        <button
-          disabled={room.players.length < 2}
-          onClick={onStart}
-          className="w-full rounded bg-black px-4 py-2 text-white disabled:opacity-50"
-        >
-          Start Game
-        </button>
-      ) : (
-        <p className="text-center text-gray-500">
-          Waiting for the host to start…
-        </p>
-      )}
-      {error && <p className="text-red-600">{error}</p>}
-    </main>
+      <div className="mt-auto space-y-3">
+        {isHost ? (
+          <>
+            <Button
+              onClick={onStart}
+              disabled={room.players.length < 2}
+              className="w-full"
+            >
+              Start game
+            </Button>
+            {room.players.length < 2 && (
+              <p className="text-center text-sm font-semibold">
+                Waiting for at least one more player…
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-center font-semibold">
+            Waiting for the host to start…
+          </p>
+        )}
+        <ErrorNote message={error} />
+      </div>
+    </Screen>
   );
 }

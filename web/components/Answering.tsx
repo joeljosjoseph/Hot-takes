@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import type { Room } from "@/lib/types";
-import { useSecondsLeft } from "../hooks/useSecondsLeft";
+import { useCountdown } from "@/hooks/useCountdown";
+import { ANSWER_SECONDS } from "@/lib/config";
+import { Button, Card, ErrorNote, Pill, Screen, inputClass } from "./ui";
 
 type Props = {
   room: Room;
@@ -20,34 +22,54 @@ export default function Answering({
   onSubmit,
 }: Props) {
   const [text, setText] = useState("");
-  const secondsLeft = useSecondsLeft(room.phaseEndsAt);
-  const timeUp = secondsLeft === 0;
+  const msLeft = useCountdown(room.phaseEndsAt);
+  const secondsLeft = msLeft === null ? null : Math.ceil(msLeft / 1000);
+  const timeUp = msLeft === 0;
+  const fraction =
+    msLeft === null || !room.phaseDurationMs
+      ? 0
+      : Math.min(1, msLeft / room.phaseDurationMs);
+  const urgent = msLeft !== null && fraction <= 1 / 3;
 
   function handleChange(value: string) {
     setText(value);
     onDraft(value);
   }
+  console.log({ duration: room.phaseDurationMs, msLeft, fraction });
 
   return (
-    <main className="mx-auto max-w-md p-6 space-y-6 text-center">
-      <p className="text-sm text-gray-500">
-        Round {room.round} of {room.totalRounds}
-      </p>
-      <h1 className="text-2xl font-bold">{room.prompt}</h1>
+    <Screen>
+      <div className="flex items-center justify-between">
+        <Pill>
+          Round {room.round} of {room.totalRounds}
+        </Pill>
+        <span
+          className={`rounded-full border-2 border-ink px-3 py-1 text-xl font-extrabold tabular-nums ${
+            urgent ? "bg-[#ff4d6d]" : "bg-white"
+          }`}
+        >
+          {secondsLeft === null ? "" : timeUp ? "Time's up" : `${secondsLeft}s`}
+        </span>
+      </div>
 
-      <p className="text-5xl font-mono">
-        {secondsLeft === null
-          ? ""
-          : secondsLeft > 0
-            ? `${secondsLeft}s`
-            : "Time's up!"}
-      </p>
-      {timeUp && <p className="text-gray-500">Waiting for the next phase…</p>}
+      <div className="h-3 overflow-hidden rounded-full border-2 border-ink bg-white">
+        <div
+          className="h-full bg-green-500"
+          style={{ width: `${fraction * 100}%` }}
+        />
+      </div>
+
+      <Card tone="sun" className="py-6">
+        <h1 className="text-3xl font-extrabold leading-tight">{room.prompt}</h1>
+      </Card>
 
       {submitted ? (
-        <p className="text-green-600">Submitted! Waiting for the others…</p>
+        <Card tone="mint">
+          <p className="text-lg font-bold">Answer submitted</p>
+          <p>Waiting for the others…</p>
+        </Card>
       ) : (
-        <div className="flex gap-2">
+        <div className="space-y-3">
           <input
             value={text}
             onChange={(e) => handleChange(e.target.value)}
@@ -55,18 +77,27 @@ export default function Answering({
             maxLength={100}
             placeholder="Your answer"
             disabled={timeUp}
-            className="w-full rounded border px-3 py-2"
+            className={inputClass}
           />
-          <button
+          <p className="text-right text-sm font-semibold tabular-nums">
+            {text.length}/100
+          </p>
+          <Button
             onClick={() => onSubmit(text)}
             disabled={timeUp}
-            className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+            className="w-full"
           >
-            Submit
-          </button>
+            Submit answer
+          </Button>
+          {timeUp && (
+            <p className="text-center font-semibold">
+              Waiting for the next phase…
+            </p>
+          )}
         </div>
       )}
-      {error && <p className="text-red-600">{error}</p>}
-    </main>
+
+      <ErrorNote message={error} />
+    </Screen>
   );
 }

@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-// Seconds until the deadline, or null when there is no deadline
-export function useSecondsLeft(phaseEndsAt: number | null): number | null {
+// Milliseconds until the deadline, or null when there is no deadline
+export function useCountdown(phaseEndsAt: number | null): number | null {
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
     const tick = () => setNow(Date.now());
     const first = setTimeout(tick, 0);
-    const id = setInterval(tick, 250);
+    const id = setInterval(tick, 100);
     return () => {
       clearTimeout(first);
       clearInterval(id);
@@ -17,5 +17,5 @@ export function useSecondsLeft(phaseEndsAt: number | null): number | null {
   }, []);
 
   if (phaseEndsAt === null || now === null) return null;
-  return Math.max(0, Math.ceil((phaseEndsAt - now) / 1000));
+  return Math.max(0, phaseEndsAt - now);
 }

@@ -1,1 +1,39 @@
 @import "tailwindcss";
+
+@theme {
+  --color-ink: #1e1b4b;
+  --color-paper: #eeeafb;
+  --color-sun: #ffd23f;
+  --color-chili: #ff4d6d;
+  --color-mint: #3ddc97;
+  --color-berry: #b4123a;
+  --shadow-pop: 4px 4px 0 0 var(--color-ink);
+}
+
+@theme inline {
+  --font-sans: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-ink);
+    outline-offset: 3px;
+  }
+}
+
+/* Results reveal: the one orchestrated moment */
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.reveal {
+  animation: reveal 0.35s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { animation: none; }
+}

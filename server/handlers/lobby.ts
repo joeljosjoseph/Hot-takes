@@ -30,7 +30,7 @@ export function registerLobbyHandlers(socket: Socket) {
             phaseEndsAt: null,
             prompt: null,
             round: 0,
-            totalRounds: TOTAL_ROUNDS,
+            totalRounds: TOTAL_ROUNDS, phaseDurationMs: null
         };
 
         rooms.set(code, room);

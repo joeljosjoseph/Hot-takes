@@ -14,6 +14,7 @@ export type Room = {
     hostId: string;
     players: Player[];
     phase: Phase;
+    phaseDurationMs: number | null
     phaseEndsAt: number | null
     prompt: string | null
     round: number;
