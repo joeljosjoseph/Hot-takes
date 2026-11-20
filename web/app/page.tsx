@@ -6,10 +6,10 @@ import { AnswerResult, Room } from "@/lib/types";
 
 // Stable id that survives refreshes (the server's hostId/player id come from this)
 function getPlayerId(): string {
-  let id = localStorage.getItem("playerId");
+  let id = sessionStorage.getItem("playerId");
   if (!id) {
     id = crypto.randomUUID();
-    localStorage.setItem("playerId", id);
+    sessionStorage.setItem("playerId", id);
   }
   return id;
 }
