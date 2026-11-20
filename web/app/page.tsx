@@ -40,12 +40,14 @@ export default function Home() {
     socket.on("disconnect", onDisconnect);
     socket.on("room:state", onState);
     socket.on("error:join", onJoinError);
+    socket.on("room:playerDisconnect", onState);
 
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("room:state", onState);
       socket.off("error:join", onJoinError);
+      socket.off("room:playerDisconnect", onState);
     };
   }, []);
 

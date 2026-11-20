@@ -63,10 +63,6 @@ io.on("connection", (socket) => {
         socket.emit("room:state", room);
     });
 
-    socket.on("disconnect", () => {
-        console.log("disconnected:", socket.id);
-    });
-
     socket.on("joinRoom", (data: { code: string; playerId: string; name: string }) => {
         let room = rooms.get(data.code);
 
@@ -84,6 +80,32 @@ io.on("connection", (socket) => {
         // Everyone in the room sees the updated lobby:
         io.to(room.code).emit("room:state", room);
     });
+
+    socket.on("disconnect", () => {
+        console.log("disconnected:", socket.id);
+
+        for (const room of rooms.values()) {
+            const index = room.players.findIndex((p) => p.socketId === socket.id);
+            if (index === -1) continue;
+
+            const [removed] = room.players.splice(index, 1);   // returns the removed items
+
+            if (room.players.length === 0) {
+                rooms.delete(room.code)
+                return;
+            }
+
+            if (removed?.id === room.hostId) {
+                // TODO: set room.hostId to the next player's id
+                room.hostId = room.players[0]?.id || ""
+            }
+
+            // TODO: tell everyone still in the room
+            io.to(room.code).emit("room:playerDisconnect", room);
+            return;
+        }
+    });
+
 });
 
 httpServer.listen(4000, () => console.log("server on :4000"));
