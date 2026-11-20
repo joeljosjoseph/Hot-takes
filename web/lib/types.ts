@@ -1,5 +1,7 @@
 export type Phase = "LOBBY" | "ANSWERING" | "VOTING" | "RESULTS" | "GAME_OVER";
 
+export type Option = { id: string; text: string };
+
 export type Player = {
     id: string;
     name: string;
