@@ -56,6 +56,7 @@ io.on("connection", (socket) => {
             code,
             hostId: data.playerId,
             players: [host],
+            phase: "LOBBY"
         };
 
         rooms.set(code, room);
@@ -78,6 +79,33 @@ io.on("connection", (socket) => {
         socket.join(room.code);
 
         // Everyone in the room sees the updated lobby:
+        io.to(room.code).emit("room:state", room);
+    });
+
+    socket.on("game:start", (data: { code: string }) => {
+        const room = rooms.get(data.code);
+        if (!room) {
+            socket.emit("error:game", "Room not found");
+            return;
+        }
+
+        const sender = room.players.find((p) => p.socketId === socket.id);
+        if (!sender || sender.id !== room.hostId) {
+            socket.emit("error:game", "Only the host can start the game");
+            return;
+        }
+
+        if (room.phase !== "LOBBY") {
+            socket.emit("error:game", "Game already started");
+            return;
+        }
+
+        if (room.players.length < 2) {
+            socket.emit("error:game", "Need at least 2 players");
+            return;
+        }
+
+        room.phase = "ANSWERING";
         io.to(room.code).emit("room:state", room);
     });
 

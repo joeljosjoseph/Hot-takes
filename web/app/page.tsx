@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { socket } from "./socket";
-
-type Player = { id: string; name: string; socketId: string; score: number };
-type Room = { code: string; hostId: string; players: Player[] };
+import { Room } from "@/lib/types";
+import { log } from "console";
 
 // Stable id that survives refreshes (the server's hostId/player id come from this)
 function getPlayerId(): string {
@@ -23,36 +22,6 @@ export default function Home() {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    const onConnect = () => setIsConnected(true);
-    const onDisconnect = () => setIsConnected(false);
-    const onState = (r: Room) => {
-      console.log(r);
-
-      setRoom(r);
-      setError("");
-    };
-    const onJoinError = (msg: string) => setError(msg);
-
-    if (socket.connected) onConnect();
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("room:state", onState);
-    socket.on("error:join", onJoinError);
-    socket.on("room:playerDisconnect", onState);
-
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("room:state", onState);
-      socket.off("error:join", onJoinError);
-      socket.off("room:playerDisconnect", onState);
-    };
-  }, []);
-
-  const trimmedName = name.trim();
-  const ready = isConnected;
 
   function createRoom() {
     const playerId = getPlayerId();
@@ -80,6 +49,44 @@ export default function Home() {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
+
+  function handleStartGame() {
+    socket.emit("game:start", room);
+  }
+
+  useEffect(() => {
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
+    const onState = (r: Room) => {
+      console.log(r);
+
+      setRoom(r);
+      setError("");
+    };
+    const onJoinError = (msg: string) => setError(msg);
+
+    const onGameError = (msg: string) => setError(msg);
+
+    if (socket.connected) onConnect();
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("room:state", onState);
+    socket.on("error:join", onJoinError);
+    socket.on("error:game", onGameError);
+    socket.on("room:playerDisconnect", onState);
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("room:state", onState);
+      socket.off("error:join", onJoinError);
+      socket.off("error:game", onGameError);
+      socket.off("room:playerDisconnect", onState);
+    };
+  }, []);
+
+  const trimmedName = name.trim();
+  const ready = isConnected;
 
   // ---------- Lobby ----------
   if (room) {
@@ -116,16 +123,18 @@ export default function Home() {
 
         {myId === room.hostId ? (
           <button
-            disabled
-            className="w-full rounded bg-black px-4 py-2 text-white opacity-50"
+            disabled={room.players.length < 2}
+            onClick={handleStartGame}
+            className="w-full rounded bg-black px-4 py-2 text-white disabled:opacity-50"
           >
-            Start game (coming soon)
+            Start Game
           </button>
         ) : (
           <p className="text-center text-gray-500">
             Waiting for the host to start…
           </p>
         )}
+        {error && <p className="text-red-600">{error}</p>}
       </main>
     );
   }
