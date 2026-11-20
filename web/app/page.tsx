@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { socket } from "./socket";
-import { Room } from "@/lib/types";
+import { AnswerResult, Room } from "@/lib/types";
 
 // Stable id that survives refreshes (the server's hostId/player id come from this)
 function getPlayerId(): string {
@@ -26,6 +26,7 @@ export default function Home() {
   const [submitted, setSubmitted] = useState(false);
   const [options, setOptions] = useState<{ id: string; text: string }[]>([]);
   const [voted, setVoted] = useState(false);
+  const [results, setResults] = useState<AnswerResult[]>([]);
 
   function createRoom() {
     const playerId = getPlayerId();
@@ -96,6 +97,8 @@ export default function Home() {
         setVoted(false);
       }
 
+      if (r.phase !== "RESULTS") setResults([]);
+
       setError("");
     };
 
@@ -106,10 +109,13 @@ export default function Home() {
     const onGameError = (msg: string) => setError(msg);
 
     const onOptions = (o: { id: string; text: string }[]) => setOptions(o);
+
     const onVoteAccepted = () => {
       console.log("Voted");
       setVoted(true);
     };
+
+    const onResults = (r: AnswerResult[]) => setResults(r);
 
     if (socket.connected) onConnect();
     socket.on("connect", onConnect);
@@ -120,6 +126,7 @@ export default function Home() {
     socket.on("answer:accepted", onAccepted);
     socket.on("voting:options", onOptions);
     socket.on("vote:accepted", onVoteAccepted);
+    socket.on("room:results", onResults);
     socket.on("room:playerDisconnect", onState);
 
     // socket.on("game:vote", onGameVote);
@@ -131,6 +138,9 @@ export default function Home() {
       socket.off("error:join", onJoinError);
       socket.off("error:game", onGameError);
       socket.off("answer:accepted", onAccepted);
+      socket.off("voting:options", onOptions);
+      socket.off("vote:accepted", onVoteAccepted);
+      socket.off("room:results", onResults);
       socket.off("room:playerDisconnect", onState);
     };
   }, []);
@@ -234,10 +244,34 @@ export default function Home() {
     }
 
     if (room.phase === "RESULTS") {
+      const ranking = [...room.players].sort((a, b) => b.score - a.score);
       return (
-        <main className="mx-auto max-w-md p-6 text-center">
-          <h1 className="text-2xl font-bold">Results</h1>
-          <p className="text-gray-500">Coming soon…</p>
+        <main className="mx-auto max-w-md p-6 space-y-6">
+          <h1 className="text-2xl font-bold text-center">Results</h1>
+          <ul className="space-y-2">
+            {results.map((r, i) => (
+              <li key={i} className="rounded border px-4 py-3">
+                <p>{r.text}</p>
+                <p className="text-sm text-gray-500">
+                  {r.authorName}: {r.votes} vote{r.votes === 1 ? "" : "s"}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <div>
+            <h2 className="font-semibold mb-2">Scoreboard</h2>
+            <ol className="space-y-1">
+              {ranking.map((p) => (
+                <li key={p.id} className="flex justify-between">
+                  <span>
+                    {p.name}
+                    {p.id === myId && " (you)"}
+                  </span>
+                  <span>{p.score}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
         </main>
       );
     }

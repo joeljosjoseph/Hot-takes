@@ -15,3 +15,5 @@ export type Room = {
     phaseEndsAt: number | null
     prompt: string | null
 };
+
+export type AnswerResult = { text: string; authorName: string; votes: number };
