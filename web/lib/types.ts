@@ -1,4 +1,4 @@
-export type Phase = "LOBBY" | "ANSWERING" | "VOTING" | "RESULTS";
+export type Phase = "LOBBY" | "ANSWERING" | "VOTING" | "RESULTS" | "GAME_OVER";
 
 export type Player = {
     id: string;
@@ -14,6 +14,8 @@ export type Room = {
     phase: Phase;
     phaseEndsAt: number | null
     prompt: string | null
+    round: number;
+    totalRounds: number;
 };
 
 export type AnswerResult = { text: string; authorName: string; votes: number };

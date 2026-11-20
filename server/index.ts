@@ -13,6 +13,8 @@ const io = new Server(httpServer, { cors: { origin: "http://localhost:3000" } })
 
 //Max seconds for answering phase
 const ANSWER_SECONDS = 30
+//Total rounds for the game
+const TOTAL_ROUNDS = 3
 
 const rooms = new Map<string, Room>();
 const answers = new Map<string, Answer[]>();
@@ -54,6 +56,7 @@ function startAnswering(room: Room) {
     room.phase = "ANSWERING";
     room.prompt = generatePrompt();
     room.phaseEndsAt = Date.now() + ANSWER_SECONDS * 1000;
+    room.round += 1;
     answers.set(room.code, []);
     drafts.set(room.code, new Map());
     startTimer(room.code, ANSWER_SECONDS * 1000, () => endAnswering(room.code));
@@ -175,7 +178,9 @@ io.on("connection", (socket) => {
             players: [host],
             phase: "LOBBY",
             phaseEndsAt: null,
-            prompt: null
+            prompt: null,
+            round: 0,
+            totalRounds: TOTAL_ROUNDS
         };
 
         rooms.set(code, room);
@@ -321,6 +326,43 @@ io.on("connection", (socket) => {
         if (everyoneVoted(room)) {
             endVoting(room.code)
         }
+    });
+
+    socket.on("round:next", (data: { code: string }) => {
+        const room = rooms.get(data.code);
+        if (!room) return;
+
+        const sender = room.players.find((p) => p.socketId === socket.id);
+        if (!sender || sender.id !== room.hostId) {
+            socket.emit("error:game", "Only the host can continue");
+            return;
+        }
+        if (room.phase !== "RESULTS") return;
+
+        if (room.round >= room.totalRounds) {
+            room.phase = "GAME_OVER"
+            rooms.set(room.code, room)
+            io.to(room.code).emit("room:state", room);
+        } else {
+            startAnswering(room)
+        }
+    });
+
+    socket.on("game:playAgain", (data: { code: string }) => {
+        const room = rooms.get(data.code);
+        if (!room) return;
+
+        const sender = room.players.find((p) => p.socketId === socket.id);
+        if (!sender || sender.id !== room.hostId) {
+            socket.emit("error:game", "Only the host can continue");
+            return;
+        }
+        // TODO: back to "LOBBY", round 0, every player's score back to 0,
+        //       prompt and phaseEndsAt back to null, then broadcast room:state
+        room.phase = "LOBBY";
+
+        rooms.set(room.code, room);
+        io.to(room.code).emit("room:state", room);
     });
 
     socket.on("disconnect", () => {
