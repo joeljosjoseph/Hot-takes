@@ -22,6 +22,8 @@ export default function Home() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState<number | null>(null);
+  const [answerText, setAnswerText] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   function createRoom() {
     const playerId = getPlayerId();
@@ -55,6 +57,13 @@ export default function Home() {
     socket.emit("game:start", { code: room.code });
   }
 
+  function submitAnswer() {
+    if (!room) return;
+    const text = answerText.trim();
+    if (!text) return setError("Write something first");
+    socket.emit("answer:submit", { code: room.code, text });
+  }
+
   useEffect(() => {
     const onConnect = () => setIsConnected(true);
     const onDisconnect = () => setIsConnected(false);
@@ -62,10 +71,16 @@ export default function Home() {
       console.log(r);
       setRoom(r);
 
+      if (r.phase !== "ANSWERING") {
+        // round complete: reset for next round
+        setSubmitted(false);
+        setAnswerText("");
+      }
+
       setError("");
     };
 
-    const onGameVote = (r: Room) => {};
+    const onAccepted = () => setSubmitted(true);
 
     const onJoinError = (msg: string) => setError(msg);
 
@@ -77,6 +92,7 @@ export default function Home() {
     socket.on("room:state", onState);
     socket.on("error:join", onJoinError);
     socket.on("error:game", onGameError);
+    socket.on("answer:accepted", onAccepted);
     socket.on("room:playerDisconnect", onState);
 
     // socket.on("game:vote", onGameVote);
@@ -87,6 +103,7 @@ export default function Home() {
       socket.off("room:state", onState);
       socket.off("error:join", onJoinError);
       socket.off("error:game", onGameError);
+      socket.off("answer:accepted", onAccepted);
       socket.off("room:playerDisconnect", onState);
     };
   }, []);
@@ -130,7 +147,28 @@ export default function Home() {
             <p className="text-gray-500">Waiting for the next phase…</p>
           )}
 
-          {/* answer input + submit button go here next */}
+          {submitted ? (
+            <p className="text-green-600">Submitted! Waiting for the others…</p>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                value={answerText}
+                onChange={(e) => setAnswerText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submitAnswer()}
+                maxLength={100}
+                placeholder="Your answer"
+                disabled={secondsLeft === 0}
+                className="w-full rounded border px-3 py-2"
+              />
+              <button
+                onClick={submitAnswer}
+                disabled={secondsLeft === 0}
+                className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+              >
+                Submit
+              </button>
+            </div>
+          )}
           {error && <p className="text-red-600">{error}</p>}
         </main>
       );

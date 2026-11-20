@@ -1,10 +1,11 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import type { Player, Room } from "./type";
+import type { Answer, Player, Room } from "./type";
 import generateCode from "./roomCode";
 import { startTimer, stopTimer } from "./timer";
 import { generatePrompt } from "./prompts";
+import { randomUUID } from "crypto";
 
 const app = express();
 const httpServer = createServer(app);
@@ -14,6 +15,7 @@ const io = new Server(httpServer, { cors: { origin: "http://localhost:3000" } })
 const ANSWER_SECONDS = 30
 
 const rooms = new Map<string, Room>();
+const answers = new Map<string, Answer[]>();
 
 function createUniqueCode(): string {
     let code = generateCode();
@@ -50,6 +52,10 @@ function endAnswering(code: string) {
     io.to(code).emit("room:state", room);
 }
 
+function everyoneAnswered(room: Room): boolean {
+    const list = answers.get(room.code) ?? [];
+    return room.players.every((p) => list.some((a) => a.playerId === p.id));
+}
 
 io.on("connection", (socket) => {
     console.log("connected:", socket.id);
@@ -135,6 +141,48 @@ io.on("connection", (socket) => {
         io.to(room.code).emit("room:state", room);
     });
 
+    socket.on("answer:submit", (data: { code: string; text: string }) => {
+        const room = rooms.get(data.code);
+        if (!room) {
+            socket.emit("error:game", "Room not found");
+            return;
+        }
+
+        const sender = room.players.find((p) => p.socketId === socket.id);
+        if (!sender) {
+            socket.emit("error:game", "You're not in this room");
+            return;
+        }
+
+        if (room.phase !== "ANSWERING") {
+            socket.emit("error:game", "Not accepting answers right now");
+            return;
+        }
+
+
+        const text = typeof data.text === "string" ? data.text.trim() : "";
+        if (text.length === 0 || text.length > 100) {
+            socket.emit("error:game", "Answer must be 1-100 characters");
+            return;
+        }
+
+        const list = answers.get(room.code) ?? [];
+        const alreadyAnswered = list.some((o) => o.playerId === sender.id)
+
+        if (alreadyAnswered) {
+            socket.emit("error:game", "Only one submission per player");
+            return;
+        }
+        list.push({ id: randomUUID(), playerId: sender.id, text });
+        answers.set(room.code, list);
+
+        socket.emit("answer:accepted");
+
+        if (everyoneAnswered(room)) {
+            endAnswering(room.code)
+        }
+    });
+
     socket.on("disconnect", () => {
         console.log("disconnected:", socket.id);
 
@@ -145,16 +193,22 @@ io.on("connection", (socket) => {
             const [removed] = room.players.splice(index, 1);   // returns the removed items
 
             if (room.players.length === 0) {
-                stopTimer(room.code)
-                rooms.delete(room.code)
+                stopTimer(room.code);
+                answers.delete(room.code);
+                rooms.delete(room.code);
                 return;
             }
-
             if (removed?.id === room.hostId) {
                 room.hostId = room.players[0]?.id || ""
             }
 
             io.to(room.code).emit("room:playerDisconnect", room);
+
+            //If player leaves, check for phase...if left player was last to submit then end phase
+            if (room.phase === "ANSWERING" && everyoneAnswered(room)) {
+                endAnswering(room.code);
+            }
+
             return;
         }
     });
