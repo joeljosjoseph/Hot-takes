@@ -92,6 +92,9 @@ export default function Home() {
 
     const onGameError = (msg: string) => setError(msg);
 
+    const onVotingOptions = (options: { id: string; text: string }) =>
+      console.log(options);
+
     if (socket.connected) onConnect();
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
@@ -99,6 +102,7 @@ export default function Home() {
     socket.on("error:join", onJoinError);
     socket.on("error:game", onGameError);
     socket.on("answer:accepted", onAccepted);
+    socket.on("voting:options", onVotingOptions);
     socket.on("room:playerDisconnect", onState);
 
     // socket.on("game:vote", onGameVote);

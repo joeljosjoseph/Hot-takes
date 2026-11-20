@@ -44,17 +44,26 @@ function startAnswering(room: Room) {
     io.to(room.code).emit("room:state", room);
 }
 
+function shuffle<T>(items: T[]): T[] {
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j]!, copy[i]!];
+    }
+    return copy;
+}
+
 function endAnswering(code: string) {
     const room = rooms.get(code);
     if (!room || room.phase !== "ANSWERING") return;
     stopTimer(code);
 
-    const list = answers.get(code) ?? [];
+    let list = answers.get(code) ?? [];
     const roomDrafts = drafts.get(code);
 
     for (const player of room.players) {
         const hasAnswer = list.some((a) => a.playerId === player.id);
-        const draft = roomDrafts?.get(room.code);
+        const draft = roomDrafts?.get(player.id);
         if (!hasAnswer && draft) {
             list.push({ id: randomUUID(), playerId: player.id, text: draft });
         }
@@ -65,6 +74,15 @@ function endAnswering(code: string) {
     room.phase = "VOTING";
     room.phaseEndsAt = null;
     io.to(code).emit("room:state", room);
+
+    for (const player of room.players) {
+        const options = shuffle(
+            list
+                .filter((a) => a.playerId !== player.id)
+                .map((a) => ({ id: a.id, text: a.text }))
+        );
+        io.to(player.socketId).emit("voting:options", options);
+    }
 }
 
 function everyoneAnswered(room: Room): boolean {
