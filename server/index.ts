@@ -145,16 +145,15 @@ io.on("connection", (socket) => {
             const [removed] = room.players.splice(index, 1);   // returns the removed items
 
             if (room.players.length === 0) {
+                stopTimer(room.code)
                 rooms.delete(room.code)
                 return;
             }
 
             if (removed?.id === room.hostId) {
-                // TODO: set room.hostId to the next player's id
                 room.hostId = room.players[0]?.id || ""
             }
 
-            // TODO: tell everyone still in the room
             io.to(room.code).emit("room:playerDisconnect", room);
             return;
         }
