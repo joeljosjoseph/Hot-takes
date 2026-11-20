@@ -3,10 +3,15 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import type { Player, Room } from "./type";
 import generateCode from "./roomCode";
+import { startTimer, stopTimer } from "./timer";
+import { generatePrompt } from "./prompts";
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "http://localhost:3000" } });
+
+//Max seconds for answering phase
+const ANSWER_SECONDS = 30
 
 const rooms = new Map<string, Room>();
 
@@ -27,6 +32,24 @@ function addOrUpdatePlayer(room: Room, playerId: string, name: string, socketId:
     room.players.push(player);
     return player;
 }
+
+function startAnswering(room: Room) {
+    room.phase = "ANSWERING";
+    room.prompt = generatePrompt();
+    room.phaseEndsAt = Date.now() + ANSWER_SECONDS * 1000;     // point in time, for clients
+    startTimer(room.code, ANSWER_SECONDS * 1000, () => endAnswering(room.code));   // duration
+    io.to(room.code).emit("room:state", room);
+}
+
+function endAnswering(code: string) {
+    const room = rooms.get(code);
+    if (!room || room.phase !== "ANSWERING") return;
+    stopTimer(code);
+    room.phase = "VOTING";
+    room.phaseEndsAt = null;
+    io.to(code).emit("room:state", room);
+}
+
 
 io.on("connection", (socket) => {
     console.log("connected:", socket.id);
@@ -56,7 +79,9 @@ io.on("connection", (socket) => {
             code,
             hostId: data.playerId,
             players: [host],
-            phase: "LOBBY"
+            phase: "LOBBY",
+            phaseEndsAt: null,
+            prompt: null
         };
 
         rooms.set(code, room);
@@ -106,6 +131,7 @@ io.on("connection", (socket) => {
         }
 
         room.phase = "ANSWERING";
+        startAnswering(room)
         io.to(room.code).emit("room:state", room);
     });
 

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { socket } from "./socket";
 import { Room } from "@/lib/types";
-import { log } from "console";
 
 // Stable id that survives refreshes (the server's hostId/player id come from this)
 function getPlayerId(): string {
@@ -22,6 +21,7 @@ export default function Home() {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [now, setNow] = useState<number | null>(null);
 
   function createRoom() {
     const playerId = getPlayerId();
@@ -51,7 +51,8 @@ export default function Home() {
   }
 
   function handleStartGame() {
-    socket.emit("game:start", room);
+    if (!room) return;
+    socket.emit("game:start", { code: room.code });
   }
 
   useEffect(() => {
@@ -59,10 +60,13 @@ export default function Home() {
     const onDisconnect = () => setIsConnected(false);
     const onState = (r: Room) => {
       console.log(r);
-
       setRoom(r);
+
       setError("");
     };
+
+    const onGameVote = (r: Room) => {};
+
     const onJoinError = (msg: string) => setError(msg);
 
     const onGameError = (msg: string) => setError(msg);
@@ -75,6 +79,8 @@ export default function Home() {
     socket.on("error:game", onGameError);
     socket.on("room:playerDisconnect", onState);
 
+    // socket.on("game:vote", onGameVote);
+
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
@@ -85,12 +91,69 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const first = setTimeout(tick, 0);
+    const id = setInterval(tick, 250);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, []);
+
+  const secondsLeft =
+    room?.phaseEndsAt != null && now !== null
+      ? Math.max(0, Math.ceil((room.phaseEndsAt - now) / 1000))
+      : null;
+
   const trimmedName = name.trim();
   const ready = isConnected;
 
   // ---------- Lobby ----------
   if (room) {
     const myId = getPlayerId();
+
+    if (room.phase === "ANSWERING") {
+      return (
+        <main className="mx-auto max-w-md p-6 space-y-6 text-center">
+          <p className="text-sm text-gray-500">Your prompt</p>
+          <h1 className="text-2xl font-bold">{room.prompt}</h1>
+
+          <p className="text-5xl font-mono">
+            {secondsLeft === null
+              ? ""
+              : secondsLeft > 0
+                ? `${secondsLeft}s`
+                : "Time's up!"}
+          </p>
+          {secondsLeft === 0 && (
+            <p className="text-gray-500">Waiting for the next phase…</p>
+          )}
+
+          {/* answer input + submit button go here next */}
+          {error && <p className="text-red-600">{error}</p>}
+        </main>
+      );
+    }
+
+    if (room.phase === "VOTING") {
+      return (
+        <main className="mx-auto max-w-md p-6 text-center">
+          <h1 className="text-2xl font-bold">Voting</h1>
+          <p className="text-gray-500">Coming soon…</p>
+        </main>
+      );
+    }
+
+    if (room.phase === "RESULTS") {
+      return (
+        <main className="mx-auto max-w-md p-6 text-center">
+          <h1 className="text-2xl font-bold">Results</h1>
+          <p className="text-gray-500">Coming soon…</p>
+        </main>
+      );
+    }
+
     return (
       <main className="mx-auto max-w-md p-6 space-y-6">
         <div className="text-center space-y-2">

@@ -11,5 +11,7 @@ export type Room = {
     code: string;
     hostId: string;
     players: Player[];
-    phase: Phase
+    phase: Phase;
+    phaseEndsAt: number | null
+    prompt: string | null
 };

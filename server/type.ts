@@ -13,6 +13,8 @@ export type Room = {
     hostId: string;    // which player's screen controls the game
     players: Player[];
     phase: Phase;
+    phaseEndsAt: number | null
+    prompt: string | null
 };
 
 
