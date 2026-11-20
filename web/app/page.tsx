@@ -24,6 +24,8 @@ export default function Home() {
   const [now, setNow] = useState<number | null>(null);
   const [answerText, setAnswerText] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [options, setOptions] = useState<{ id: string; text: string }[]>([]);
+  const [voted, setVoted] = useState(false);
 
   function createRoom() {
     const playerId = getPlayerId();
@@ -70,6 +72,12 @@ export default function Home() {
     socket.emit("answer:submit", { code: room.code, text });
   }
 
+  function vote(answerId: string) {
+    if (!room || voted) return;
+
+    socket.emit("vote:submit", { code: room.code, answerId });
+  }
+
   useEffect(() => {
     const onConnect = () => setIsConnected(true);
     const onDisconnect = () => setIsConnected(false);
@@ -83,6 +91,11 @@ export default function Home() {
         setAnswerText("");
       }
 
+      if (r.phase !== "VOTING") {
+        setOptions([]);
+        setVoted(false);
+      }
+
       setError("");
     };
 
@@ -92,8 +105,11 @@ export default function Home() {
 
     const onGameError = (msg: string) => setError(msg);
 
-    const onVotingOptions = (options: { id: string; text: string }) =>
-      console.log(options);
+    const onOptions = (o: { id: string; text: string }[]) => setOptions(o);
+    const onVoteAccepted = () => {
+      console.log("Voted");
+      setVoted(true);
+    };
 
     if (socket.connected) onConnect();
     socket.on("connect", onConnect);
@@ -102,7 +118,8 @@ export default function Home() {
     socket.on("error:join", onJoinError);
     socket.on("error:game", onGameError);
     socket.on("answer:accepted", onAccepted);
-    socket.on("voting:options", onVotingOptions);
+    socket.on("voting:options", onOptions);
+    socket.on("vote:accepted", onVoteAccepted);
     socket.on("room:playerDisconnect", onState);
 
     // socket.on("game:vote", onGameVote);
@@ -186,9 +203,32 @@ export default function Home() {
 
     if (room.phase === "VOTING") {
       return (
-        <main className="mx-auto max-w-md p-6 text-center">
-          <h1 className="text-2xl font-bold">Voting</h1>
-          <p className="text-gray-500">Coming soon…</p>
+        <main className="mx-auto max-w-md p-6 space-y-4">
+          <h1 className="text-2xl font-bold text-center">{room.prompt}</h1>
+          <p className="text-center text-gray-500">
+            {voted
+              ? "Vote locked in ✓ Waiting for the others…"
+              : "Pick your favourite"}
+          </p>
+          <ul className="space-y-2">
+            {options.map((o) => (
+              <li key={o.id}>
+                <button
+                  onClick={() => vote(o.id)}
+                  disabled={voted}
+                  className="w-full rounded border px-4 py-3 text-left disabled:opacity-50"
+                >
+                  {o.text}
+                </button>
+              </li>
+            ))}
+            {options.length === 0 && (
+              <p className="text-center text-gray-500">
+                Nothing to vote on this round. Waiting for the others…
+              </p>
+            )}
+          </ul>
+          {error && <p className="text-red-600 text-center">{error}</p>}
         </main>
       );
     }

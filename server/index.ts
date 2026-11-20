@@ -17,12 +17,26 @@ const ANSWER_SECONDS = 30
 const rooms = new Map<string, Room>();
 const answers = new Map<string, Answer[]>();
 const drafts = new Map<string, Map<string, string>>();
+const votes = new Map<string, Map<string, string>>();
 
 function createUniqueCode(): string {
     let code = generateCode();
     if (rooms.has(code))
         code = createUniqueCode();
     return code;
+}
+
+function canVote(room: Room, playerId: string): boolean {
+    const list = answers.get(room.code) ?? [];
+    return list.some((a) => a.playerId !== playerId);
+}
+
+function everyoneVoted(room: Room): boolean {
+    const roomVotes = votes.get(room.code);
+    if (!roomVotes) return false;
+    return room.players
+        .filter((p) => canVote(room, p.id))
+        .every((p) => roomVotes.has(p.id));
 }
 
 function addOrUpdatePlayer(room: Room, playerId: string, name: string, socketId: string): Player {
@@ -39,8 +53,10 @@ function addOrUpdatePlayer(room: Room, playerId: string, name: string, socketId:
 function startAnswering(room: Room) {
     room.phase = "ANSWERING";
     room.prompt = generatePrompt();
-    room.phaseEndsAt = Date.now() + ANSWER_SECONDS * 1000;     // point in time, for clients
-    startTimer(room.code, ANSWER_SECONDS * 1000, () => endAnswering(room.code));   // duration
+    room.phaseEndsAt = Date.now() + ANSWER_SECONDS * 1000;
+    answers.set(room.code, []);
+    drafts.set(room.code, new Map());
+    startTimer(room.code, ANSWER_SECONDS * 1000, () => endAnswering(room.code));
     io.to(room.code).emit("room:state", room);
 }
 
@@ -73,6 +89,8 @@ function endAnswering(code: string) {
     drafts.delete(code);
     room.phase = "VOTING";
     room.phaseEndsAt = null;
+    votes.set(code, new Map());
+
     io.to(code).emit("room:state", room);
 
     for (const player of room.players) {
@@ -83,6 +101,43 @@ function endAnswering(code: string) {
         );
         io.to(player.socketId).emit("voting:options", options);
     }
+    if (everyoneVoted(room)) {
+        endVoting(room.code)
+    }
+}
+
+const POINTS_PER_VOTE = 100;
+
+function endVoting(code: string) {
+    const room = rooms.get(code);
+    if (!room || room.phase !== "VOTING") return;
+
+    const list = answers.get(code) ?? [];
+    const roomVotes = votes.get(code) ?? new Map<string, string>();
+
+    // answerId -> number of votes
+    const tally = new Map<string, number>();
+    for (const answerId of roomVotes.values()) {
+        tally.set(answerId, (tally.get(answerId) ?? 0) + 1);
+    }
+
+    const results = list
+        .map((a) => {
+            const count = tally.get(a.id) ?? 0;
+            const author = room.players.find((p) => p.id === a.playerId);
+            if (author) author.score += count * POINTS_PER_VOTE;
+            return {
+                text: a.text,
+                authorName: author?.name ?? "(left the game)",
+                votes: count,
+            };
+        })
+        .sort((a, b) => b.votes - a.votes);
+
+    room.phase = "RESULTS";
+    room.phaseEndsAt = null;
+    io.to(code).emit("room:results", results);
+    io.to(code).emit("room:state", room);
 }
 
 function everyoneAnswered(room: Room): boolean {
@@ -169,9 +224,7 @@ io.on("connection", (socket) => {
             return;
         }
 
-        room.phase = "ANSWERING";
         startAnswering(room)
-        io.to(room.code).emit("room:state", room);
     });
 
     socket.on("answer:submit", (data: { code: string; text: string }) => {
@@ -239,6 +292,37 @@ io.on("connection", (socket) => {
         }
     });
 
+    socket.on("vote:submit", (data: { code: string; answerId: string }) => {
+        const room = rooms.get(data.code);
+        if (!room || room.phase !== "VOTING") return;
+
+        const sender = room.players.find((p) => p.socketId === socket.id);
+        if (!sender) return;
+
+        if (typeof data.answerId !== "string") return;
+        const answer = (answers.get(room.code) ?? []).find((a) => a.id === data.answerId);
+        if (!answer) return;
+
+        if (answer.playerId === sender.id) {
+            socket.emit("error:game", "You can't vote for your own answer");
+            return;
+        }
+
+        const roomVotes = votes.get(room.code);
+        if (!roomVotes) return;
+        if (roomVotes.has(sender.id)) {
+            socket.emit("error:game", "You already voted");
+            return;
+        }
+
+        roomVotes.set(sender.id, answer.id);
+        socket.emit("vote:accepted");
+
+        if (everyoneVoted(room)) {
+            endVoting(room.code)
+        }
+    });
+
     socket.on("disconnect", () => {
         console.log("disconnected:", socket.id);
 
@@ -250,7 +334,9 @@ io.on("connection", (socket) => {
 
             if (room.players.length === 0) {
                 stopTimer(room.code);
+                drafts.delete(room.code)
                 answers.delete(room.code);
+                votes.delete(room.code)
                 rooms.delete(room.code);
                 return;
             }
@@ -263,6 +349,9 @@ io.on("connection", (socket) => {
             //If player leaves, check for phase...if left player was last to submit then end phase
             if (room.phase === "ANSWERING" && everyoneAnswered(room)) {
                 endAnswering(room.code);
+            }
+            if (room.phase === "VOTING" && everyoneVoted(room)) {
+                endVoting(room.code)
             }
 
             return;
