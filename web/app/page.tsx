@@ -57,6 +57,12 @@ export default function Home() {
     socket.emit("game:start", { code: room.code });
   }
 
+  function onAnswerChange(value: string) {
+    setAnswerText(value);
+    if (!room || submitted) return;
+    socket.emit("answer:draft", { code: room.code, text: value });
+  }
+
   function submitAnswer() {
     if (!room) return;
     const text = answerText.trim();
@@ -153,7 +159,7 @@ export default function Home() {
             <div className="flex gap-2">
               <input
                 value={answerText}
-                onChange={(e) => setAnswerText(e.target.value)}
+                onChange={(e) => onAnswerChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submitAnswer()}
                 maxLength={100}
                 placeholder="Your answer"

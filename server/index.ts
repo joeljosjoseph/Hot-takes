@@ -16,6 +16,7 @@ const ANSWER_SECONDS = 30
 
 const rooms = new Map<string, Room>();
 const answers = new Map<string, Answer[]>();
+const drafts = new Map<string, Map<string, string>>();
 
 function createUniqueCode(): string {
     let code = generateCode();
@@ -47,6 +48,20 @@ function endAnswering(code: string) {
     const room = rooms.get(code);
     if (!room || room.phase !== "ANSWERING") return;
     stopTimer(code);
+
+    const list = answers.get(code) ?? [];
+    const roomDrafts = drafts.get(code);
+
+    for (const player of room.players) {
+        const hasAnswer = list.some((a) => a.playerId === player.id);
+        const draft = roomDrafts?.get(room.code);
+        if (!hasAnswer && draft) {
+            list.push({ id: randomUUID(), playerId: player.id, text: draft });
+        }
+    }
+    answers.set(code, list);
+
+    drafts.delete(code);
     room.phase = "VOTING";
     room.phaseEndsAt = null;
     io.to(code).emit("room:state", room);
@@ -180,6 +195,29 @@ io.on("connection", (socket) => {
 
         if (everyoneAnswered(room)) {
             endAnswering(room.code)
+        }
+    });
+
+    socket.on("answer:draft", (data: { code: string; text: string }) => {
+        const room = rooms.get(data.code);
+        if (!room || room.phase !== "ANSWERING") return;
+
+        const sender = room.players.find((p) => p.socketId === socket.id);
+        if (!sender) return;
+
+        const roomDrafts = drafts.get(room.code);
+        if (!roomDrafts) return;
+
+        // Already submitted: draft isn't needed anymore
+        const list = answers.get(room.code) ?? [];
+        if (list.some((a) => a.playerId === sender.id)) return;
+
+        const text = typeof data.text === "string" ? data.text.trim().slice(0, 100) : "";
+
+        if (text.length === 0) {
+            roomDrafts.delete(sender.id);    // player cleared input; no draft
+        } else {
+            roomDrafts.set(sender.id, text);
         }
     });
 
