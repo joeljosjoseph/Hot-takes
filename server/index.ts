@@ -1,4 +1,4 @@
-import { httpServer, io } from "./io";
+import { app, httpServer, io } from "./io";
 import { PORT } from "./config";
 import { registerLobbyHandlers } from "./handlers/lobby";
 import { registerGameHandlers } from "./handlers/game";
@@ -14,3 +14,5 @@ io.on("connection", (socket) => {
 });
 
 httpServer.listen(PORT, () => console.log(`server on :${PORT}`));
+
+app.get("/", (_req, res) => res.send("Hot Takes server is running"));
