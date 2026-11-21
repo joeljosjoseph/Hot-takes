@@ -1,10 +1,14 @@
 # Hot Takes
  
 A real-time multiplayer party game for the browser. One person hosts a room, friends join from their phones with a 4-letter code, everyone answers a silly prompt, and the group votes anonymously on the best answer. Three rounds, one winner.
+
+Live link: https://hot-takes-party-game.vercel.app/ 
+( The server is deployed on render's free instance, therefore it might take around 30-50s to establish socket connection the first time you open the game, if the server was inactive for a while.
+So please do be patient :) )
  
 ![alt text](image.png)
  
-## How a game works
+## How the game works
  
 1. The host creates a room and shares the 4-letter code.
 2. Players join from any device and appear live in the lobby.
@@ -67,6 +71,10 @@ web/
   app/          Next.js pages and the socket client
   lib/types.ts  Client-side types
 ```
+
+## Deployment
+
+The frontend is deployed on Vercel, while the backend server is hosted on Render. The Next.js application connects to the deployed Socket.io server to support real-time multiplayer gameplay across devices. Environment variables are configured separately for each deployment to ensure the client connects to the correct production server and CORS is restricted to the deployed frontend origin. The backend runs on Render's free tier, so it may spin down after periods of inactivity, resulting in an initial connection delay of approximately 30–50 seconds when starting a new session. Once the server is active, gameplay and real-time communication work normally.
  
 ## Roadmap
  
@@ -78,7 +86,7 @@ web/
 - [ ] End-to-end test of a full game (Playwright)
 - [ ] Animations and mobile polish
 - [ ] CI with GitHub Actions
-- [ ] Deployment with a live demo link
+- [x] Deployment with a live demo link
 ## License
  
 MIT
