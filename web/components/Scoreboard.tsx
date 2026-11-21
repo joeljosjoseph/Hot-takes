@@ -10,7 +10,7 @@ export default function Scoreboard({
 }) {
   const ranking = [...players].sort((a, b) => b.score - a.score);
   return (
-    <ol className="space-y-2">
+    <ol aria-label="Scoreboard" className="space-y-2">
       {ranking.map((p, i) => (
         <li
           key={p.id}
