@@ -1,3 +1,4 @@
+![CI](https://github.com/joeljosjoseph/Hot-takes/actions/workflows/ci.yml/badge.svg)
 # Hot Takes
  
 A real-time multiplayer party game for the browser. One person hosts a room, friends join from their phones with a 4-letter code, everyone answers a silly prompt, and the group votes anonymously on the best answer. Three rounds, one winner.
@@ -82,10 +83,10 @@ The frontend is deployed on Vercel, while the backend server is hosted on Render
 - [x] Answering, voting and results phases with server timers
 - [x] Scoring, multiple rounds and play again
 - [ ] Reject joins while a game is in progress
-- [ ] Unit tests for game logic (Vitest)
+- [x] Unit tests for game logic (Vitest)
 - [ ] End-to-end test of a full game (Playwright)
 - [ ] Animations and mobile polish
-- [ ] CI with GitHub Actions
+- [x] CI with GitHub Actions
 - [x] Deployment with a live demo link
 ## License
  
