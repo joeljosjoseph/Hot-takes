@@ -1,4 +1,4 @@
-![CI](https://github.com/joeljosjoseph/Hot-takes/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/joeljosjoseph/Hot-takes/actions/workflows/cy.yml/badge.svg)](https://github.com/joeljosjoseph/Hot-takes/actions/workflows/cy.yml)
 # Hot Takes
  
 A real-time multiplayer party game for the browser. One person hosts a room, friends join from their phones with a 4-letter code, everyone answers a silly prompt, and the group votes anonymously on the best answer. Three rounds, one winner.
