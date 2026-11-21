@@ -1,18 +1,6 @@
-import { app, httpServer, io } from "./io";
+import { httpServer } from "./io";
 import { PORT } from "./config";
-import { registerLobbyHandlers } from "./handlers/lobby";
-import { registerGameHandlers } from "./handlers/game";
-import { registerAnsweringHandlers } from "./handlers/answering";
-import { registerVotingHandlers } from "./handlers/voting";
+import { wireHandlers } from "./setup";
 
-io.on("connection", (socket) => {
-    console.log("connected:", socket.id);
-    registerLobbyHandlers(socket);
-    registerGameHandlers(socket);
-    registerAnsweringHandlers(socket);
-    registerVotingHandlers(socket);
-});
-
+wireHandlers();
 httpServer.listen(PORT, () => console.log(`server on :${PORT}`));
-
-app.get("/", (_req, res) => res.send("Hot Takes server is running"));
