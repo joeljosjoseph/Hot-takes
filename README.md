@@ -84,7 +84,7 @@ The frontend is deployed on Vercel, while the backend server is hosted on Render
 - [x] Scoring, multiple rounds and play again
 - [ ] Reject joins while a game is in progress
 - [x] Unit tests for game logic (Vitest)
-- [ ] End-to-end test of a full game (Playwright)
+- [x] End-to-end test of a full game (Playwright)
 - [ ] Animations and mobile polish
 - [x] CI with GitHub Actions
 - [x] Deployment with a live demo link
